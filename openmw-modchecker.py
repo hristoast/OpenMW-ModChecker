@@ -243,14 +243,20 @@ def main():
             emit_log("No paths to check for {}!!!!".format(single_mod))
     else:
         for data_mod_path in all_data_paths.values():
-            mod_path = re.match('data="(.+)"', str(data_mod_path)).group(1)
-            if mod_path == base_mod_dir:
-                continue            
-            _mod_files_list = get_mod_file_list(mod_path)
-            single_mod = pathlib.Path(mod_path).name
-            mod_dict.update({single_mod: _mod_files_list})
-            emit_log("There are {0} files in the mod '{1}'".format(str(len(_mod_files_list)), single_mod), level=logging.DEBUG)
-            check_mod(single_mod, all_data_paths, base_mod_dir)
+            if data_mod_path.startswith("data="):
+                data_mod_path = data_mod_path.replace("\n", "") # remove newline
+                mod_path = data_mod_path.replace("data=", "")
+                if mod_path.startswith('"'):
+                    mod_path = mod_path[1:] # remove leading quote
+                if mod_path.endswith('"'):
+                    mod_path = mod_path[:-1] # remove trailing quote
+                if mod_path == base_mod_dir:
+                    continue
+                _mod_files_list = get_mod_file_list(mod_path)                
+                single_mod = pathlib.Path(mod_path).name
+                mod_dict.update({single_mod: _mod_files_list})
+                emit_log("There are {0} files in the mod '{1}'".format(str(len(_mod_files_list)), single_mod), level=logging.DEBUG)
+                check_mod(single_mod, all_data_paths, base_mod_dir)
     emit_log("End scan - {0} (v{1})".format(PROG, VERSION))
     end = datetime.datetime.now()
     duration = end - start
