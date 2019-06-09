@@ -244,12 +244,8 @@ def main():
     else:
         for data_mod_path in all_data_paths.values():
             if data_mod_path.startswith("data="):
-                data_mod_path = data_mod_path.replace("\n", "") # remove newline
                 mod_path = data_mod_path.replace("data=", "")
-                if mod_path.startswith('"'):
-                    mod_path = mod_path[1:] # remove leading quote
-                if mod_path.endswith('"'):
-                    mod_path = mod_path[:-1] # remove trailing quote
+                mod_path = data_mod_path.strip("'\"\n") # remove quotes and newline
                 if mod_path == base_mod_dir:
                     continue
                 _mod_files_list = get_mod_file_list(mod_path)                
