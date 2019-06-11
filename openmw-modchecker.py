@@ -6,6 +6,8 @@ import logging
 import os
 import sys
 import textwrap
+import re
+import pathlib
 
 from collections import OrderedDict
 from typing import Union as T
@@ -240,8 +242,17 @@ def main():
             # Either single_mod is not a real mod or it actually has no files.
             emit_log("No paths to check for {}!!!!".format(single_mod))
     else:
-        emit_log("TODO: SCAN ALL MODS!")
-        pass
+        for data_mod_path in all_data_paths.values():
+            if data_mod_path.startswith("data="):
+                mod_path = data_mod_path.replace("data=", "")
+                mod_path = data_mod_path.strip("'\"\n") # remove quotes and newline
+                if mod_path == base_mod_dir:
+                    continue
+                _mod_files_list = get_mod_file_list(mod_path)                
+                single_mod = pathlib.Path(mod_path).name
+                mod_dict.update({single_mod: _mod_files_list})
+                emit_log("There are {0} files in the mod '{1}'".format(str(len(_mod_files_list)), single_mod), level=logging.DEBUG)
+                check_mod(single_mod, all_data_paths, base_mod_dir)
     emit_log("End scan - {0} (v{1})".format(PROG, VERSION))
     end = datetime.datetime.now()
     duration = end - start
