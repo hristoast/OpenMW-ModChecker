@@ -4,7 +4,6 @@ import datetime
 import logging
 import os
 import sys
-import textwrap
 import pathlib
 
 from collections import OrderedDict
@@ -30,23 +29,8 @@ VERSION = "0.1"
 VERY_LOUD = False
 
 
-def get_terminal_dims() -> tuple:
-    tty = os.popen("stty size", "r")
-    try:
-        y, x = tty.read().split()
-    except ValueError:
-        y, x = ["0", "0"]
-    tty.close()
-    return x, y
-
-
 def emit_log(msg: str, level=logging.INFO, *args, **kwargs) -> None:
     """Logging wrapper."""
-    if not level == logging.DEBUG and int(get_terminal_dims()[0]) > 0:
-        _num = 31  # magic number to get how many actual columns we have to work with
-        msg = textwrap.shorten(
-            msg, width=int(get_terminal_dims()[0]) - _num, placeholder=" ..."
-        )
 
     if level == logging.DEBUG:
         logging.debug(msg, *args, **kwargs)
