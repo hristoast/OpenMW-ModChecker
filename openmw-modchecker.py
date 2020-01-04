@@ -25,7 +25,7 @@ OK_DIRS = [
     "splash",
     "textures",
 ]
-VERSION = "0.1"
+VERSION = "0.2"
 VERY_LOUD = False
 
 
@@ -100,6 +100,18 @@ def mod_name_from_data_path(datastring: str) -> str:
     )
 
 
+def mod_path_from_data_path(datastring: str) -> str:
+    path = os.path.abspath(
+        datastring.strip("data=")
+        .rstrip("\n")
+        .strip('"')
+        .strip("'")
+        .rstrip('"')
+        .rstrip("'")
+    )
+    return path
+
+
 def check_mod(_mod: str, all_paths: list, base_dir: str) -> bool:
     """
     The meat and potatoes, so to say.
@@ -110,20 +122,23 @@ def check_mod(_mod: str, all_paths: list, base_dir: str) -> bool:
     overridden by something later in the load order.
     """
     ow_by = []
-    mod1_files = get_mod_file_list(os.path.join(base_dir, _mod))
+    mod1_files = get_mod_file_list(_mod)
+    start_checking = False
+
     if len(mod1_files) == 0:
         emit_log("Mod {} has no files!".format(_mod), level=logging.DEBUG)
         return False
 
-    start_checking = False
     for num, p in all_paths.items():
-        if os.path.sep + _mod in p and not start_checking:
+
+        if _mod in p and not start_checking:
             emit_log(
                 "Found mod '{0}' in the load order at position #{1}, start checking now".format(
                     _mod, num
                 )
             )
             start_checking = True
+
         elif start_checking:
             emit_log("", level=logging.DEBUG)
             if len(mod1_files) > 0:
@@ -135,6 +150,7 @@ def check_mod(_mod: str, all_paths: list, base_dir: str) -> bool:
                     "Mod '{0}' files left to check: {1}".format(_mod, len(mod1_files)),
                     level=logging.DEBUG,
                 )
+
                 next_mod = mod_name_from_data_path(p)
                 if next_mod == _mod:
                     emit_log("next_mod == _mod, skipping it", level=logging.DEBUG)
@@ -143,7 +159,7 @@ def check_mod(_mod: str, all_paths: list, base_dir: str) -> bool:
                     "Checking '{0}' against '{1}'".format(_mod, next_mod),
                     level=logging.DEBUG,
                 )
-                next_mod_files = get_mod_file_list(os.path.join(base_dir, next_mod))
+                next_mod_files = get_mod_file_list(mod_path_from_data_path(p))
                 if len(next_mod_files) == 0:
                     emit_log(
                         "Mod '{}' has no files to check".format(next_mod),
@@ -253,13 +269,13 @@ def main():
         emit_log("Begin scan - {0} (v{1})".format(PROG, VERSION))
 
     if parsed.base_mod_dir:
-        base_mod_dir = parsed.base_mod_dir
+        base_mod_dir = os.path.abspath(parsed.base_mod_dir)
         emit_log("BASE MOD DIR: " + base_mod_dir, level=logging.DEBUG)
     if parsed.mod_dir_name:
-        single_mod = parsed.mod_dir_name
+        single_mod = os.path.abspath(parsed.mod_dir_name)
         emit_log("SINGLE MOD: " + single_mod, level=logging.DEBUG)
     if parsed.openmw_cfg:
-        openmw_cfg = parsed.openmw_cfg
+        openmw_cfg = os.path.abspath(parsed.openmw_cfg)
         emit_log("OPENMW.CFG: " + openmw_cfg, level=logging.DEBUG)
 
     all_data_paths = read_openmw_cfg(openmw_cfg)
