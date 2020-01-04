@@ -1,27 +1,14 @@
 #!/usr/bin/env python3
 import argparse
 import datetime
-
-# import json
 import logging
 import os
 import sys
 import textwrap
-import re
 import pathlib
 
 from collections import OrderedDict
 from typing import Union as T
-
-try:
-    # Optional support for fancy spinners
-    from halo import Halo
-
-    global SPINNER
-    SPINNER = Halo(text="Working", spinner="dots")
-    SPINNER.start()
-except ImportError:
-    Halo = None
 
 
 DEFAULT_CFG_FILE = os.path.join(os.getenv("HOME"), ".config", "openmw", "openmw.cfg")
@@ -61,8 +48,6 @@ def emit_log(msg: str, level=logging.INFO, *args, **kwargs) -> None:
             msg, width=int(get_terminal_dims()[0]) - _num, placeholder=" ..."
         )
 
-    if Halo:
-        SPINNER.clear()
     if level == logging.DEBUG:
         logging.debug(msg, *args, **kwargs)
     elif level == logging.INFO:
@@ -344,8 +329,6 @@ def main():
         "Took {m} minutes, {s} seconds.".format(m=minutes, s=seconds),
         level=logging.DEBUG,
     )
-    if Halo:
-        SPINNER.stop()
 
 
 if __name__ == "__main__":
