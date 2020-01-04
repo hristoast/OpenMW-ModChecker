@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import datetime
+
 # import json
 import logging
 import os
@@ -11,27 +12,39 @@ import pathlib
 
 from collections import OrderedDict
 from typing import Union as T
+
 try:
     # Optional support for fancy spinners
     from halo import Halo
+
     global SPINNER
-    SPINNER = Halo(text='Working', spinner='dots')
+    SPINNER = Halo(text="Working", spinner="dots")
     SPINNER.start()
 except ImportError:
     Halo = None
 
+
 DEFAULT_CFG_FILE = os.path.join(os.getenv("HOME"), ".config", "openmw", "openmw.cfg")
 DESC = "Scan mod directories to determine if an entire mod is being overwritten by something later in the load order.  Checks all found mods by default."
-LICENSE = 'GPLv3'
-LOGFMT = '%(asctime)s : %(message)s'
+LICENSE = "GPLv3"
+LOGFMT = "%(asctime)s : %(message)s"
 PROG = "openmw-modchecker"
-OK_DIRS = ["bookart", "fonts", "icons", "meshes", "music", "sound", "splash", "textures"]
+OK_DIRS = [
+    "bookart",
+    "fonts",
+    "icons",
+    "meshes",
+    "music",
+    "sound",
+    "splash",
+    "textures",
+]
 VERSION = "0.1"
 VERY_LOUD = False
 
 
 def get_terminal_dims() -> tuple:
-    tty = os.popen('stty size', 'r')
+    tty = os.popen("stty size", "r")
     try:
         y, x = tty.read().split()
     except ValueError:
@@ -44,8 +57,9 @@ def emit_log(msg: str, level=logging.INFO, *args, **kwargs) -> None:
     """Logging wrapper."""
     if not level == logging.DEBUG and int(get_terminal_dims()[0]) > 0:
         _num = 31  # magic number to get how many actual columns we have to work with
-        msg = textwrap.shorten(msg, width=int(get_terminal_dims()[0]) - _num,
-                               placeholder=" ...")
+        msg = textwrap.shorten(
+            msg, width=int(get_terminal_dims()[0]) - _num, placeholder=" ..."
+        )
 
     if Halo:
         SPINNER.clear()
@@ -104,7 +118,7 @@ def read_openmw_cfg(cfg_path: str) -> list:
     line_list = cfg.readlines()
     cfg.close()
     for line in line_list:
-        if line.startswith('data=') and "data files" not in line.lower():
+        if line.startswith("data=") and "data files" not in line.lower():
             data_paths.update({count: line})
             count += 1
     return data_paths
@@ -112,7 +126,9 @@ def read_openmw_cfg(cfg_path: str) -> list:
 
 def mod_name_from_data_path(datastring: str) -> str:
     """Hacky, not-foolproof way to get a mod name from a file path."""
-    return datastring.split('data="')[-1].split(os.path.sep)[-1].replace('"', '').rstrip()
+    return (
+        datastring.split('data="')[-1].split(os.path.sep)[-1].replace('"', "").rstrip()
+    )
 
 
 def check_mod(_mod: str, all_paths: list, base_dir: str) -> bool:
@@ -133,39 +149,72 @@ def check_mod(_mod: str, all_paths: list, base_dir: str) -> bool:
     start_checking = False
     for num, p in all_paths.items():
         if os.path.sep + _mod in p and not start_checking:
-            emit_log("Found mod '{0}' in the load order at position #{1}, start checking now".format(_mod, num))
+            emit_log(
+                "Found mod '{0}' in the load order at position #{1}, start checking now".format(
+                    _mod, num
+                )
+            )
             start_checking = True
         elif start_checking:
             emit_log("", level=logging.DEBUG)
             if len(mod1_files) > 0:
-                emit_log("Load order #{0}, path: {1}".format(num, p.rstrip()), level=logging.DEBUG)
-                emit_log("Mod '{0}' files left to check: {1}".format(_mod, len(mod1_files)), level=logging.DEBUG)
+                emit_log(
+                    "Load order #{0}, path: {1}".format(num, p.rstrip()),
+                    level=logging.DEBUG,
+                )
+                emit_log(
+                    "Mod '{0}' files left to check: {1}".format(_mod, len(mod1_files)),
+                    level=logging.DEBUG,
+                )
                 next_mod = mod_name_from_data_path(p)
                 if next_mod == _mod:
                     emit_log("next_mod == _mod, skipping it", level=logging.DEBUG)
                     continue
-                emit_log("Checking '{0}' against '{1}'".format(_mod, next_mod), level=logging.DEBUG)
+                emit_log(
+                    "Checking '{0}' against '{1}'".format(_mod, next_mod),
+                    level=logging.DEBUG,
+                )
                 next_mod_files = get_mod_file_list(os.path.join(base_dir, next_mod))
                 if len(next_mod_files) == 0:
-                    emit_log("Mod '{}' has no files to check".format(next_mod), level=logging.DEBUG)
+                    emit_log(
+                        "Mod '{}' has no files to check".format(next_mod),
+                        level=logging.DEBUG,
+                    )
                     continue
                 else:
-                    emit_log("Mod '{0}' files to check: {1}".format(next_mod, len(next_mod_files)), level=logging.DEBUG)
+                    emit_log(
+                        "Mod '{0}' files to check: {1}".format(
+                            next_mod, len(next_mod_files)
+                        ),
+                        level=logging.DEBUG,
+                    )
                     for _file in next_mod_files:
                         if _file in mod1_files:
                             mod1_files.remove(_file)
-                            emit_log("Mod '{0}' overwrites file '{1}' from the source mod '{2}'".format(next_mod, _file, _mod), level=logging.DEBUG)
+                            emit_log(
+                                "Mod '{0}' overwrites file '{1}' from the source mod '{2}'".format(
+                                    next_mod, _file, _mod
+                                ),
+                                level=logging.DEBUG,
+                            )
                             if next_mod not in ow_by:
                                 ow_by.append(next_mod)
             else:
-                emit_log("Mod '{0}' has been overwritten by the following mods:".format(_mod))
+                emit_log(
+                    "Mod '{0}' has been overwritten by the following mods:".format(_mod)
+                )
                 for m in ow_by:
                     emit_log("----> " + m)
                 return False
 
-            emit_log("Mod '{0}' does not overwrite mod '{1}'!".format(next_mod, _mod), level=logging.DEBUG)
+            emit_log(
+                "Mod '{0}' does not overwrite mod '{1}'!".format(next_mod, _mod),
+                level=logging.DEBUG,
+            )
     emit_log("", level=logging.DEBUG)
-    emit_log("Mod '{0}' can stay, remaining filecount: {1}".format(_mod, len(mod1_files)))
+    emit_log(
+        "Mod '{0}' can stay, remaining filecount: {1}".format(_mod, len(mod1_files))
+    )
     # TODO: extra verbose
     if len(mod1_files) < 50 or VERY_LOUD:
         emit_log("Leftover files list:", level=logging.DEBUG)
@@ -184,12 +233,28 @@ def parse_argv() -> None:
     """Set up args and parse them."""
     parser = argparse.ArgumentParser(description=DESC, prog=PROG)
     req_args = parser.add_mutually_exclusive_group(required=True)
-    req_args.add_argument("-D", "--base-mod-dir", help="Path to the base mod directory containing all other mods.")
+    req_args.add_argument(
+        "-D",
+        "--base-mod-dir",
+        help="Path to the base mod directory containing all other mods.",
+    )
     options = parser.add_argument_group("Options")
-    options.add_argument("-f", "--openmw-cfg-file", dest='openmw_cfg', metavar="CFG FILE",
-                         help="Specify the path to an openmw.cfg file.")
-    options.add_argument("-m", "--mod-dir-name", help="Directory name of a single mod to be checked.")
-    options.add_argument("-v", "--verbose", action="store_true", help="Print out (a lot) more information about what's going on.")
+    options.add_argument(
+        "-f",
+        "--openmw-cfg-file",
+        dest="openmw_cfg",
+        metavar="CFG FILE",
+        help="Specify the path to an openmw.cfg file.",
+    )
+    options.add_argument(
+        "-m", "--mod-dir-name", help="Directory name of a single mod to be checked."
+    )
+    options.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Print out (a lot) more information about what's going on.",
+    )
     return parser.parse_args()
 
 
@@ -211,7 +276,11 @@ def main():
     init_logging(log_level)
     emit_log("VERBOSE ON!", level=logging.DEBUG)
     start = datetime.datetime.now()
-    if "-h" not in sys.argv and "--help" not in sys.argv and "--version" not in sys.argv:
+    if (
+        "-h" not in sys.argv
+        and "--help" not in sys.argv
+        and "--version" not in sys.argv
+    ):
         emit_log("Begin scan - {0} (v{1})".format(PROG, VERSION))
 
     if parsed.base_mod_dir:
@@ -233,10 +302,18 @@ def main():
         emit_log("Checking single mod: '{}'".format(single_mod))
         num_paths_to_check = len(all_data_paths.values())
         if num_paths_to_check > 0:
-            emit_log("There are {} paths to check".format(str(num_paths_to_check)), level=logging.DEBUG)
+            emit_log(
+                "There are {} paths to check".format(str(num_paths_to_check)),
+                level=logging.DEBUG,
+            )
             _mod_files_list = get_mod_file_list(os.path.join(base_mod_dir, single_mod))
             mod_dict.update({single_mod: _mod_files_list})
-            emit_log("There are {0} files in the mod '{1}'".format(str(len(_mod_files_list)), single_mod), level=logging.DEBUG)
+            emit_log(
+                "There are {0} files in the mod '{1}'".format(
+                    str(len(_mod_files_list)), single_mod
+                ),
+                level=logging.DEBUG,
+            )
             check_mod(single_mod, all_data_paths, base_mod_dir)
         else:
             # Either single_mod is not a real mod or it actually has no files.
@@ -245,25 +322,33 @@ def main():
         for data_mod_path in all_data_paths.values():
             if data_mod_path.startswith("data="):
                 mod_path = data_mod_path.replace("data=", "")
-                mod_path = data_mod_path.strip("'\"\n") # remove quotes and newline
+                mod_path = data_mod_path.strip("'\"\n")  # remove quotes and newline
                 if mod_path == base_mod_dir:
                     continue
-                _mod_files_list = get_mod_file_list(mod_path)                
+                _mod_files_list = get_mod_file_list(mod_path)
                 single_mod = pathlib.Path(mod_path).name
                 mod_dict.update({single_mod: _mod_files_list})
-                emit_log("There are {0} files in the mod '{1}'".format(str(len(_mod_files_list)), single_mod), level=logging.DEBUG)
+                emit_log(
+                    "There are {0} files in the mod '{1}'".format(
+                        str(len(_mod_files_list)), single_mod
+                    ),
+                    level=logging.DEBUG,
+                )
                 check_mod(single_mod, all_data_paths, base_mod_dir)
     emit_log("End scan - {0} (v{1})".format(PROG, VERSION))
     end = datetime.datetime.now()
     duration = end - start
     minutes = int(duration.total_seconds() // 60)
     seconds = int(duration.total_seconds() % 60)
-    emit_log("Took {m} minutes, {s} seconds.".format(m=minutes, s=seconds), level=logging.DEBUG)
+    emit_log(
+        "Took {m} minutes, {s} seconds.".format(m=minutes, s=seconds),
+        level=logging.DEBUG,
+    )
     if Halo:
         SPINNER.stop()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
